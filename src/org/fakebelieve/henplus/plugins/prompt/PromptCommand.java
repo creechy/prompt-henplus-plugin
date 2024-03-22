@@ -4,10 +4,15 @@
  */
 package org.fakebelieve.henplus.plugins.prompt;
 
-import henplus.*;
+import henplus.AbstractCommand;
+import henplus.CommandDispatcher;
+import henplus.HenPlus;
+import henplus.SQLSession;
+import henplus.SessionManager;
 import henplus.event.ExecutionListener;
-
+import henplus.property.EnumeratedPropertyHolder;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.SortedSet;
 
 public final class PromptCommand extends AbstractCommand {
@@ -53,11 +58,15 @@ public final class PromptCommand extends AbstractCommand {
                         // IGNORE
                     }
 
+                    if (!currentSession.getPropertyRegistry().getPropertyMap().containsKey("prompt-color")) {
+                        currentSession.getPropertyRegistry().registerProperty("prompt-color",
+                            new PromptColorProperty(Color.colors(), "none"));
+                    }
                 }
 
                 if (currentSessionName != null) {
-
-                    HenPlus.getInstance().setPrompt(currentSessionName + "!" + autoCommit + "> ");
+                    String color = currentSession.getPropertyRegistry().getPropertyMap().get("prompt-color").getValue();
+                    HenPlus.getInstance().setPrompt(Color.colorize(color, currentSessionName + "!" + autoCommit) + "> ");
                 }
                 //System.out.println("BING BING BING - " + currentSessionName);
             }
@@ -157,11 +166,42 @@ public final class PromptCommand extends AbstractCommand {
     @Override
     public String getLongDescription(String cmd) {
         return "\tView or customize the command prompt\n"
-                + "\n"
-                + "\tTo view current prompt\n"
-                + "\t\t" + COMMAND_PROMPT + ";\n"
-                + "\tTo change the prompt\n"
-                + "\t\t" + COMMAND_PROMPT + " <prompt>;\n"
-                + "\n";
+            + "\n"
+            + "\tTo view current prompt\n"
+            + "\t\t" + COMMAND_PROMPT + ";\n"
+            + "\tTo change the prompt\n"
+            + "\t\t" + COMMAND_PROMPT + " <prompt>;\n"
+            + "\n";
     }
+
+    private class PromptColorProperty extends EnumeratedPropertyHolder {
+
+        private final List<String> _availableValues;
+        private final String _initialValue;
+
+        PromptColorProperty(final List<String> availableValues, final String initValue) {
+            super(availableValues);
+            _availableValues = availableValues;
+
+            propertyValue = _initialValue = initValue;
+        }
+
+        @Override
+        public String getDefaultValue() {
+            return _initialValue;
+        }
+
+        @Override
+        protected void enumeratedPropertyChanged(final int index, final String value) throws Exception {
+            if (!_availableValues.contains(value)) {
+                throw new IllegalArgumentException("invalid value");
+            }
+        }
+
+        @Override
+        public String getShortDescription() {
+            return "sets the transaction isolation level";
+        }
+    }
+
 }
